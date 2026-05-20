@@ -1,0 +1,71 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Streamlit cache
+.streamlit/secrets.toml
+
+# Model files (optional)
+# Uncomment if model is too large
+# *.pkl
+
+# Dataset files (optional)
+# Uncomment if dataset is large/sensitive
+# *.csv
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Mac files
+.AppleDouble
+.LSOverride
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# pyright
+.pyright/
+
+# Ruff
+.ruff_cache/
+
+# Streamlit deployment
+.streamlit/config.toml
