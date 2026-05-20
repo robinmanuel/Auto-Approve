@@ -71,10 +71,15 @@ lapse = st.sidebar.selectbox(
     [0, 1]
 )
 
+policies = st.sidebar.slider(
+    "Policies In Force",
+    1, 10, 1
+)
+
 
 input_data = pd.DataFrame({
     'Seniority': [seniority],
-    'Policies_in_force': [1],
+    'Policies_in_force': [policies],
     'Premium': [premium],
     'N_claims_history': [claims_history],
     'R_Claims_history': [claim_ratio],
@@ -88,16 +93,24 @@ input_data = pd.DataFrame({
 
 if st.button("Predict"):
 
-    prediction = model.predict(input_data)[0]
-
     probability = model.predict_proba(
         input_data
     )[0][1]
 
-    if prediction == 1:
+    if probability >= 0.85:
         decision = "AUTO APPROVED"
-    else:
+        risk = "LOW RISK"
+        color = "green"
+
+    elif probability >= 0.60:
         decision = "MANUAL REVIEW"
+        risk = "MEDIUM RISK"
+        color = "orange"
+
+    else:
+        decision = "HIGH RISK"
+        risk = "HIGH"
+        color = "red"
 
     st.subheader(decision)
 
@@ -106,13 +119,19 @@ if st.button("Predict"):
         f"{probability*100:.2f}%"
     )
 
+    st.metric(
+        "Risk Level",
+        risk
+    )
+
     
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=probability * 100,
         title={'text': "Approval Score"},
         gauge={
-            'axis': {'range': [0, 100]}
+            'axis': {'range': [0, 100]},
+            'bar': {'color': color}
         }
     ))
 
