@@ -70,4 +70,3 @@ htmlcov/
 # Streamlit deployment
 .streamlit/config.toml
 
-best_damagenet_model.pth
