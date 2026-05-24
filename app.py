@@ -4,6 +4,7 @@ import numpy as np
 import joblib
 import plotly.graph_objects as go
 
+from image_model import predict_damage
 
 model = joblib.load('model.pkl')
 
@@ -12,10 +13,9 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Insurance Claim Auto Approval AI")
+st.title("SmartClaim AI")
 
 st.sidebar.header("Customer Details")
-
 
 seniority = st.sidebar.slider(
     "Customer Seniority",
@@ -76,63 +76,358 @@ policies = st.sidebar.slider(
     1, 10, 1
 )
 
+uploaded_image = st.file_uploader(
+    "Upload Vehicle Damage Image",
+    type=['jpg', 'jpeg', 'png']
+)
 
 input_data = pd.DataFrame({
+
     'Seniority': [seniority],
+
     'Policies_in_force': [policies],
+
     'Premium': [premium],
+
     'N_claims_history': [claims_history],
+
     'R_Claims_history': [claim_ratio],
+
     'Lapse': [lapse],
+
     'Value_vehicle': [vehicle_value],
+
     'Power': [power],
+
     'Driver_Age': [driver_age],
+
     'Driving_Experience': [experience],
+
     'Vehicle_Age': [vehicle_age]
 })
 
-if st.button("Predict"):
+customer_probability = None
+damage_result = None
+overall_probability = None
 
-    probability = model.predict_proba(
-        input_data
-    )[0][1]
+col1, col2, col3 = st.columns(3)
 
-    if probability >= 0.85:
-        decision = "AUTO APPROVED"
-        risk = "LOW RISK"
-        color = "green"
+with col1:
 
-    elif probability >= 0.60:
-        decision = "MANUAL REVIEW"
-        risk = "MEDIUM RISK"
-        color = "orange"
+    if st.button("Predict Customer Risk"):
 
-    else:
-        decision = "HIGH RISK"
-        risk = "HIGH"
-        color = "red"
+        customer_probability = model.predict_proba(
+            input_data
+        )[0][1]
 
-    st.subheader(decision)
+        st.session_state[
+            'customer_probability'
+        ] = customer_probability
 
-    st.metric(
-        "Approval Probability",
-        f"{probability*100:.2f}%"
-    )
+        st.subheader(
+            "Customer Risk Analysis"
+        )
 
-    st.metric(
-        "Risk Level",
-        risk
-    )
+        st.metric(
+            "Customer Approval Score",
+            f"{customer_probability*100:.2f}%"
+        )
 
-    
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=probability * 100,
-        title={'text': "Approval Score"},
-        gauge={
-            'axis': {'range': [0, 100]},
-            'bar': {'color': color}
-        }
-    ))
+        fig_customer = go.Figure(
 
-    st.plotly_chart(fig)
+            go.Indicator(
+
+                mode="gauge+number",
+
+                value=(
+                    customer_probability
+                    * 100
+                ),
+
+                title={
+                    'text':
+                    "Customer Approval Score"
+                },
+
+                gauge={
+
+                    'axis': {
+                        'range': [0, 100]
+                    },
+
+                    'bar': {
+                        'color': "blue"
+                    }
+                }
+            )
+        )
+
+        st.plotly_chart(
+            fig_customer,
+            use_container_width=True
+        )
+
+with col2:
+
+    if st.button("Analyze Vehicle Damage"):
+
+        if uploaded_image is not None:
+
+            image_path = (
+                "temp_uploaded_image.jpg"
+            )
+
+            with open(
+                image_path,
+                "wb"
+            ) as f:
+
+                f.write(
+                    uploaded_image.getbuffer()
+                )
+
+            damage_result = predict_damage(
+                image_path
+            )
+
+            st.session_state[
+                'damage_result'
+            ] = damage_result
+
+            st.image(
+                uploaded_image,
+                caption="Uploaded Vehicle Image",
+                use_container_width=True
+            )
+
+            st.subheader(
+                "Damage Analysis"
+            )
+
+            st.write(
+                f"Damage Type : "
+                f"{damage_result['Damage_Type']}"
+            )
+
+            st.write(
+                f"Confidence : "
+                f"{damage_result['Confidence']}%"
+            )
+
+            st.write(
+                f"Severity : "
+                f"{damage_result['Severity']}"
+            )
+
+            st.write(
+                f"Estimated Repair Cost : "
+                f"₹{damage_result['Estimated_Cost']:,.0f}"
+            )
+
+            damage_type = damage_result[
+                'Damage_Type'
+            ]
+
+            image_score_map = {
+
+                'no_damage': 0,
+                'paint_scratch': 85,
+                'dent': 75,
+                'torn': 60,
+                'broken_lamp': 50,
+                'hole': 35,
+                'lost_parts': 25,
+                'broken_glass': 20
+            }
+
+            damage_score = image_score_map[
+                damage_type
+            ]
+
+            fig_damage = go.Figure(
+
+                go.Indicator(
+
+                    mode="gauge+number",
+
+                    value=damage_score,
+
+                    title={
+                        'text':
+                        "Vehicle Claim Validity"
+                    },
+
+                    gauge={
+
+                        'axis': {
+                            'range': [0, 100]
+                        },
+
+                        'bar': {
+                            'color': "purple"
+                        }
+                    }
+                )
+            )
+
+            st.plotly_chart(
+                fig_damage,
+                use_container_width=True
+            )
+
+        else:
+
+            st.warning(
+                "Upload image first"
+            )
+
+with col3:
+
+    if st.button("Overall Approval"):
+
+        if (
+            'customer_probability'
+            in st.session_state
+            and
+            'damage_result'
+            in st.session_state
+        ):
+
+            customer_probability = (
+                st.session_state[
+                    'customer_probability'
+                ]
+            )
+
+            damage_result = (
+                st.session_state[
+                    'damage_result'
+                ]
+            )
+
+            damage_type = damage_result[
+                'Damage_Type'
+            ]
+
+            damage_penalty = {
+
+                'no_damage': 1.00,
+                'paint_scratch': 0.05,
+                'dent': 0.10,
+                'torn': 0.15,
+                'broken_lamp': 0.20,
+                'hole': 0.30,
+                'lost_parts': 0.35,
+                'broken_glass': 0.40
+            }
+
+            overall_probability = (
+
+                customer_probability
+                -
+                damage_penalty[
+                    damage_type
+                ]
+
+            )
+
+            overall_probability = max(
+                0,
+                overall_probability
+            )
+
+            if damage_type == 'no_damage':
+
+                decision = (
+                    "NO DAMAGE DETECTED"
+                )
+
+                risk = (
+                    "Likely Fraudulent Claim"
+                )
+
+                color = "red"
+
+            elif overall_probability >= 0.85:
+
+                decision = (
+                    "AUTO APPROVED"
+                )
+
+                risk = "LOW RISK"
+
+                color = "green"
+
+            elif overall_probability >= 0.60:
+
+                decision = (
+                    "MANUAL REVIEW"
+                )
+
+                risk = "MEDIUM RISK"
+
+                color = "orange"
+
+            else:
+
+                decision = (
+                    "SURVEYOR INSPECTION REQUIRED"
+                )
+
+                risk = "HIGH RISK"
+
+                color = "red"
+
+            st.subheader(
+                decision
+            )
+
+            st.metric(
+                "Overall Approval Score",
+                f"{overall_probability*100:.2f}%"
+            )
+
+            st.metric(
+                "Risk Level",
+                risk
+            )
+
+            fig = go.Figure(
+
+                go.Indicator(
+
+                    mode="gauge+number",
+
+                    value=(
+                        overall_probability
+                        * 100
+                    ),
+
+                    title={
+                        'text':
+                        "Overall Approval Score"
+                    },
+
+                    gauge={
+
+                        'axis': {
+                            'range': [0, 100]
+                        },
+
+                        'bar': {
+                            'color': color
+                        }
+                    }
+                )
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+        else:
+
+            st.warning(
+                "Run both predictions first"
+            )
