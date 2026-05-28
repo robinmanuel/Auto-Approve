@@ -215,8 +215,8 @@ with col2:
             )
 
             st.write(
-                f"Severity : "
-                f"{damage_result['Severity']}"
+                f"Model Used : "
+                f"{damage_result.get('Model_Used', 'DamageNet')}"
             )
 
             st.write(
@@ -337,16 +337,18 @@ with col3:
             )
 
             if damage_type == 'no_damage':
-
-                decision = (
-                    "NO DAMAGE DETECTED"
-                )
-
-                risk = (
-                    "Likely Fraudulent Claim"
-                )
-
-                color = "red"
+                if customer_probability > 0.80:
+                    decision = (
+                        "LIKELY FRAUDULENT CLAIM"
+                    )
+                    risk = "FRAUD ALERT"
+                    color = "red"
+                else:
+                    decision = (
+                        "CLAIM REJECTED - NO DAMAGE"
+                    )
+                    risk = "NO CLAIM"
+                    color = "green"
 
             elif overall_probability >= 0.85:
 
