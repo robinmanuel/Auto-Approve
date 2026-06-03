@@ -9,4 +9,5 @@ matplotlib
 torch
 torchvision
 pillow
+opencv-python-headless
 ultralytics
