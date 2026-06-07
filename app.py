@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import joblib
 import plotly.graph_objects as go
 
@@ -34,11 +33,6 @@ claims_history = st.sidebar.slider(
     0, 20, 1
 )
 
-claim_ratio = st.sidebar.slider(
-    "Claim Ratio",
-    0.0, 5.0, 0.2
-)
-
 vehicle_value = st.sidebar.number_input(
     "Vehicle Value",
     1000.0,
@@ -66,11 +60,6 @@ vehicle_age = st.sidebar.slider(
     0, 30, 5
 )
 
-lapse = st.sidebar.selectbox(
-    "Lapse",
-    [0, 1]
-)
-
 policies = st.sidebar.slider(
     "Policies In Force",
     1, 10, 1
@@ -82,33 +71,16 @@ uploaded_image = st.file_uploader(
 )
 
 input_data = pd.DataFrame({
-
     'Seniority': [seniority],
-
     'Policies_in_force': [policies],
-
     'Premium': [premium],
-
     'N_claims_history': [claims_history],
-
-    'R_Claims_history': [claim_ratio],
-
-    'Lapse': [lapse],
-
     'Value_vehicle': [vehicle_value],
-
     'Power': [power],
-
     'Driver_Age': [driver_age],
-
     'Driving_Experience': [experience],
-
     'Vehicle_Age': [vehicle_age]
 })
-
-customer_probability = None
-damage_result = None
-overall_probability = None
 
 col1, col2, col3 = st.columns(3)
 
@@ -134,29 +106,16 @@ with col1:
         )
 
         fig_customer = go.Figure(
-
             go.Indicator(
-
                 mode="gauge+number",
-
-                value=(
-                    customer_probability
-                    * 100
-                ),
-
+                value=customer_probability * 100,
                 title={
                     'text':
                     "Customer Approval Score"
                 },
-
                 gauge={
-
                     'axis': {
                         'range': [0, 100]
-                    },
-
-                    'bar': {
-                        'color': "blue"
                     }
                 }
             )
@@ -215,11 +174,6 @@ with col2:
             )
 
             st.write(
-                f"Model Used : "
-                f"{damage_result.get('Model_Used', 'DamageNet')}"
-            )
-
-            st.write(
                 f"Estimated Repair Cost : "
                 f"₹{damage_result['Estimated_Cost']:,.0f}"
             )
@@ -229,7 +183,6 @@ with col2:
             ]
 
             image_score_map = {
-
                 'no_damage': 0,
                 'paint_scratch': 85,
                 'dent': 75,
@@ -245,26 +198,16 @@ with col2:
             ]
 
             fig_damage = go.Figure(
-
                 go.Indicator(
-
                     mode="gauge+number",
-
                     value=damage_score,
-
                     title={
                         'text':
                         "Vehicle Claim Validity"
                     },
-
                     gauge={
-
                         'axis': {
                             'range': [0, 100]
-                        },
-
-                        'bar': {
-                            'color': "purple"
                         }
                     }
                 )
@@ -310,7 +253,6 @@ with col3:
             ]
 
             damage_penalty = {
-
                 'no_damage': 1.00,
                 'paint_scratch': 0.05,
                 'dent': 0.10,
@@ -322,13 +264,11 @@ with col3:
             }
 
             overall_probability = (
-
                 customer_probability
                 -
                 damage_penalty[
                     damage_type
                 ]
-
             )
 
             overall_probability = max(
@@ -337,18 +277,22 @@ with col3:
             )
 
             if damage_type == 'no_damage':
+
                 if customer_probability > 0.80:
+
                     decision = (
                         "LIKELY FRAUDULENT CLAIM"
                     )
+
                     risk = "FRAUD ALERT"
-                    color = "red"
+
                 else:
+
                     decision = (
                         "CLAIM REJECTED - NO DAMAGE"
                     )
+
                     risk = "NO CLAIM"
-                    color = "green"
 
             elif overall_probability >= 0.85:
 
@@ -358,8 +302,6 @@ with col3:
 
                 risk = "LOW RISK"
 
-                color = "green"
-
             elif overall_probability >= 0.60:
 
                 decision = (
@@ -368,8 +310,6 @@ with col3:
 
                 risk = "MEDIUM RISK"
 
-                color = "orange"
-
             else:
 
                 decision = (
@@ -377,8 +317,6 @@ with col3:
                 )
 
                 risk = "HIGH RISK"
-
-                color = "red"
 
             st.subheader(
                 decision
@@ -395,29 +333,16 @@ with col3:
             )
 
             fig = go.Figure(
-
                 go.Indicator(
-
                     mode="gauge+number",
-
-                    value=(
-                        overall_probability
-                        * 100
-                    ),
-
+                    value=overall_probability * 100,
                     title={
                         'text':
                         "Overall Approval Score"
                     },
-
                     gauge={
-
                         'axis': {
                             'range': [0, 100]
-                        },
-
-                        'bar': {
-                            'color': color
                         }
                     }
                 )

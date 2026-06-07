@@ -5,7 +5,6 @@ from datetime import datetime
 
 def preprocess_data(df):
 
-
     date_cols = [
         'Date_birth',
         'Date_driving_licence',
@@ -18,7 +17,6 @@ def preprocess_data(df):
             dayfirst=True,
             errors='coerce'
         )
-
 
     current_year = datetime.now().year
 
@@ -37,7 +35,6 @@ def preprocess_data(df):
         df['Year_matriculation']
     )
 
-
     df['Length'] = df['Length'].replace(
         'NA',
         np.nan
@@ -47,8 +44,7 @@ def preprocess_data(df):
         'Length',
         'Premium',
         'Value_vehicle',
-        'Cost_claims_year',
-        'R_Claims_history'
+        'Cost_claims_year'
     ]
 
     for col in numeric_cols:
@@ -57,15 +53,18 @@ def preprocess_data(df):
             errors='coerce'
         )
 
-    df.fillna(0, inplace=True)
+    # Fill numeric columns with 0
+    num_cols = df.select_dtypes(include=np.number).columns
+    df[num_cols] = df[num_cols].fillna(0)
 
+    # Fill text columns with empty string
+    text_cols = df.select_dtypes(exclude=np.number).columns
+    df[text_cols] = df[text_cols].fillna('')
 
     df['Type_fuel'] = df['Type_fuel'].map({
         'P': 0,
         'D': 1
     })
-
-
 
     # Use only non-zero claims
     claims_df = df[
@@ -76,11 +75,7 @@ def preprocess_data(df):
         'Cost_claims_year'
     ].quantile(0.75)
 
-    claim_ratio_threshold = claims_df[
-        'R_Claims_history'
-    ].quantile(0.75)
-
-
+    # Auto approval rule without R_Claims_history and Lapse
     df['Auto_Approve'] = np.where(
         (
             df['Cost_claims_year']
@@ -89,22 +84,13 @@ def preprocess_data(df):
         (
             df['N_claims_year']
             <= 2
-        ) &
-        (
-            df['R_Claims_history']
-            <= claim_ratio_threshold
-        ) &
-        (
-            df['Lapse'] == 0
         ),
         1,
         0
     )
 
-
     print("\nThresholds Used:")
     print(f"Cost Threshold: {cost_threshold:.2f}")
-    print(f"Claim Ratio Threshold: {claim_ratio_threshold:.2f}")
 
     print("\nTarget Distribution:")
     print(
