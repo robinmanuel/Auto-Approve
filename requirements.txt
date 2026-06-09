@@ -11,3 +11,8 @@ torchvision
 pillow
 opencv-python-headless
 ultralytics
+pytesseract 
+pdfplumber
+sentence-transformers
+transformers
+opencv-python
