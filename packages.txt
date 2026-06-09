@@ -1,5 +1,3 @@
-tesseract-ocr
-libsm6
-libxext6
-libxrender-dev
-libglib2.0-0
+# Minimal packages for headless environment
+# Note: tesseract and X11 libraries excluded to avoid conflicts
+

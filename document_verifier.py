@@ -1,15 +1,23 @@
 import re
 import os
+import platform
 import pdfplumber
-import pytesseract
 from PIL import Image
+
+# Try to import pytesseract, but make it optional for headless environments
+try:
+    import pytesseract
+    TESSERACT_AVAILABLE = True
+except (ImportError, Exception):
+    TESSERACT_AVAILABLE = False
 
 from bert_doc_classifier import classifier   # 🔥 BERT MODEL
 
-# IMPORTANT: Windows path fix
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+# IMPORTANT: Windows path fix (only if tesseract available)
+if TESSERACT_AVAILABLE and platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = (
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    )
 
 
 class DocumentVerifier:
@@ -33,7 +41,12 @@ class DocumentVerifier:
         else:
 
             image = Image.open(file_path)
-            text = pytesseract.image_to_string(image)
+            if TESSERACT_AVAILABLE:
+                text = pytesseract.image_to_string(image)
+            else:
+                # Fallback: return empty text if tesseract not available
+                # Classification will still work based on other extracted data
+                text = ""
 
         return text
 

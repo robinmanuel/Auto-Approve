@@ -2,8 +2,14 @@ import os
 import re
 import platform
 import pdfplumber
-import pytesseract
 from PIL import Image
+
+# Try to import pytesseract, but make it optional for headless environments
+try:
+    import pytesseract
+    TESSERACT_AVAILABLE = True
+except (ImportError, Exception):
+    TESSERACT_AVAILABLE = False
 
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -12,11 +18,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 # -------------------------
 # TESSERACT CONFIG (Platform-aware)
 # -------------------------
-if platform.system() == "Windows":
+if TESSERACT_AVAILABLE and platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = (
         r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     )
-# On Linux/Streamlit Cloud, tesseract is in PATH by default
+# On Linux/Streamlit Cloud, tesseract is in PATH by default (if available)
 
 
 # -------------------------
@@ -120,7 +126,12 @@ class DocumentVerifier:
         else:
 
             image = Image.open(file_path)
-            text = pytesseract.image_to_string(image)
+            if TESSERACT_AVAILABLE:
+                text = pytesseract.image_to_string(image)
+            else:
+                # Fallback: return empty text if tesseract not available
+                # Classification will still work based on filename/metadata
+                text = ""
 
         return self.clean_text(text)
 

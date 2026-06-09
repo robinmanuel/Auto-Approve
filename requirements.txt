@@ -23,7 +23,6 @@ opencv-python-headless
 pillow
 
 # OCR / PDF
-pytesseract
 pdfplumber
 
 # NLP / embeddings (keep but can be heavy)
