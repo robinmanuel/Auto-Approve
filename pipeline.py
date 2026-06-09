@@ -1,5 +1,5 @@
+import cv2
 from PIL import Image
-import numpy as np
 from image_model import predict_damage
 from detector import CarPartDetector
 
@@ -14,12 +14,23 @@ class AutoApprovePipeline:
 
     def crop(self, image, bbox):
         x1, y1, x2, y2 = map(int, bbox)
-        return image.crop((x1, y1, x2, y2))
+
+        h, w = image.shape[:2]
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+
+        return image[y1:y2, x1:x2]
 
     def analyze(self, image_path):
 
-        # ✅ PIL replaces cv2 completely
-        image = Image.open(image_path).convert("RGB")
+        image = cv2.imread(image_path)
+
+        if image is None:
+            return {
+                "status": "error",
+                "parts": [],
+                "total_estimated_cost": 0
+            }
 
         parts = self.detect_parts(image_path)
 
@@ -37,20 +48,22 @@ class AutoApprovePipeline:
 
             crop_img = self.crop(image, part["bbox"])
 
-            if crop_img is None:
+            if crop_img.size == 0:
                 continue
 
             damage = predict_damage(crop_img)
 
-            cost = float(damage.get("Estimated_Cost", 0))
-            total_cost += cost
+            total_cost += damage["Estimated_Cost"]
 
             results.append({
-                "part": part.get("class_name", "unknown"),
+                "part": part.get("class_name"),
                 "part_id": part.get("class_id"),
-                "confidence": part.get("confidence"),
+                "part_confidence": part.get("confidence"),
                 "bbox": part.get("bbox"),
-                "damage": damage
+                "damage_type": damage["Damage_Type"],
+                "damage_confidence": damage["Confidence"],
+                "severity": damage["Severity"],
+                "estimated_cost": damage["Estimated_Cost"]
             })
 
         return {
