@@ -10,7 +10,7 @@ class CarPartDetector:
 
         results = self.model.predict(
             source=image_path,
-            conf=0.25,
+            conf=0.4,          # higher threshold to remove noise
             verbose=False
         )
 
@@ -18,23 +18,24 @@ class CarPartDetector:
 
         for r in results:
 
-            boxes = r.boxes
-            names = r.names
-
-            if boxes is None:
+            if r.boxes is None:
                 continue
 
-            for i in range(len(boxes)):
+            names = r.names
 
-                cls_id = int(boxes.cls[i].item())
-                conf = float(boxes.conf[i].item())
-                bbox = boxes.xyxy[i].tolist()
+            for box in r.boxes:
+
+                conf = float(box.conf[0])
+
+                # filter weak detections
+                if conf < 0.5:
+                    continue
 
                 parts.append({
-                    "class_id": cls_id,
-                    "class_name": names.get(cls_id, str(cls_id)),
+                    "class_id": int(box.cls[0]),
+                    "class_name": names[int(box.cls[0])],
                     "confidence": conf,
-                    "bbox": list(map(float, bbox))
+                    "bbox": box.xyxy[0].tolist()
                 })
 
         return parts

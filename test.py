@@ -1,7 +1,7 @@
 from pipeline import AutoApprovePipeline
 import json
 
-IMAGE_PATH = "temp_uploaded_image.jpg"  # change if needed
+IMAGE_PATH = "temp_71c79fe60d094235bdb899ddb5ea97f6.jpg"  # change if needed
 YOLO_WEIGHTS = "parts_segmentation.pt"
 
 pipeline = AutoApprovePipeline(YOLO_WEIGHTS)
