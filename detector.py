@@ -1,10 +1,17 @@
 class CarPartDetector:
 
     def __init__(self, weights):
-        from ultralytics import YOLO   # 🔥 lazy import inside constructor
-        self.model = YOLO(weights)
+        self.weights = weights
+        self.model = None   # not loaded yet
+
+    def _load_model(self):
+        from ultralytics import YOLO
+        if self.model is None:
+            self.model = YOLO(self.weights)
 
     def predict(self, image_path):
+
+        self._load_model()   # 🔥 only loads when needed
 
         results = self.model.predict(
             source=image_path,
@@ -21,8 +28,8 @@ class CarPartDetector:
             names = r.names
 
             for box in r.boxes:
-                conf = float(box.conf[0])
 
+                conf = float(box.conf[0])
                 if conf < 0.5:
                     continue
 

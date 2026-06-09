@@ -8,18 +8,18 @@ class AutoApprovePipeline:
         return self.detector.predict(image_path)
 
     def crop(self, image, bbox):
-        import cv2   # 🔥 lazy import
+        import cv2
         x1, y1, x2, y2 = map(int, bbox)
         return image[y1:y2, x1:x2]
 
     def analyze(self, image_path):
 
-        import cv2  # 🔥 lazy import (CRITICAL FIX)
+        import cv2
 
         image = cv2.imread(image_path)
 
         if image is None:
-            return {"status": "error"}
+            return {"status": "error", "message": "Invalid image"}
 
         parts = self.detect_parts(image_path)
 
