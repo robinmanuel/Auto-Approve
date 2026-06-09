@@ -19,7 +19,7 @@ torchvision==0.16.2
 ultralytics==8.0.196
 
 # Image handling (IMPORTANT: headless only)
-opencv-python-headless==4.8.1.78
+
 pillow
 
 # OCR / PDF
@@ -30,6 +30,3 @@ pdfplumber
 sentence-transformers
 transformers
 
-# Utilities
-setuptools
-wheel
