@@ -1,21 +1,35 @@
 streamlit
+
+# Core data stack
 pandas
 numpy
-xgboost
-scikit-learn
 plotly
 joblib
 matplotlib
 
-torch
-torchvision
+# ML / classical ML
+scikit-learn
+xgboost
+
+# PyTorch stack (pinned for stability)
+torch==2.1.2
+torchvision==0.16.2
+
+# YOLO (Ultralytics)
+ultralytics==8.0.196
+
+# Image handling (IMPORTANT: headless only)
+opencv-python-headless==4.8.1.78
 pillow
 
-opencv-python-headless
-
-ultralytics
-
+# OCR / PDF
 pytesseract
 pdfplumber
+
+# NLP / embeddings (keep but can be heavy)
 sentence-transformers
 transformers
+
+# Utilities
+setuptools
+wheel
