@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import cv2
 
 from torchvision import models, transforms
 from PIL import Image
@@ -95,23 +94,21 @@ def get_severity(confidence):
         return "Severe", 2.2
 
 
-# ---------------- PREPROCESS FIXED ----------------
+# ---------------- IMAGE CONVERSION ----------------
 def preprocess_input(image):
 
-    if isinstance(image, np.ndarray):
+    # Accept PIL or numpy or file path
+    if isinstance(image, str):
+        image = Image.open(image).convert("RGB")
 
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        # 🔥 light enhancement (no retraining needed)
-        image = cv2.convertScaleAbs(image, alpha=1.2, beta=10)
-
+    elif isinstance(image, np.ndarray):
         image = Image.fromarray(image)
 
     elif isinstance(image, Image.Image):
         image = image.convert("RGB")
 
-    elif isinstance(image, str):
-        image = Image.open(image).convert("RGB")
+    else:
+        raise ValueError("Unsupported image type")
 
     return image
 
@@ -124,24 +121,13 @@ def predict_damage(image):
     tensor = transform(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
-
         outputs = model(tensor)
-
-        probs = torch.softmax(outputs / 1.5, dim=1)  # 🔥 temperature scaling
+        probs = torch.softmax(outputs, dim=1)
 
         confidence, predicted = torch.max(probs, 1)
 
-    confidence_score = confidence.item()
     damage_type = CLASSES[predicted.item()]
-
-    # 🔥 safety fallback
-    if confidence_score < 0.60:
-        return {
-            "Damage_Type": "unknown",
-            "Confidence": round(confidence_score * 100, 2),
-            "Severity": "Minor",
-            "Estimated_Cost": 0
-        }
+    confidence_score = confidence.item()
 
     severity, multiplier = get_severity(confidence_score)
 
