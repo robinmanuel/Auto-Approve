@@ -1,5 +1,6 @@
-import cv2
 from PIL import Image
+import numpy as np
+
 from image_model import predict_damage
 from detector import CarPartDetector
 
@@ -9,28 +10,25 @@ class AutoApprovePipeline:
     def __init__(self, yolo_weights):
         self.detector = CarPartDetector(yolo_weights)
 
+    # -------------------------
+    # Detect parts
+    # -------------------------
     def detect_parts(self, image_path):
         return self.detector.predict(image_path)
 
+    # -------------------------
+    # Crop using PIL (NO cv2)
+    # -------------------------
     def crop(self, image, bbox):
         x1, y1, x2, y2 = map(int, bbox)
+        return image.crop((x1, y1, x2, y2))
 
-        h, w = image.shape[:2]
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(w, x2), min(h, y2)
-
-        return image[y1:y2, x1:x2]
-
+    # -------------------------
+    # Main pipeline
+    # -------------------------
     def analyze(self, image_path):
 
-        image = cv2.imread(image_path)
-
-        if image is None:
-            return {
-                "status": "error",
-                "parts": [],
-                "total_estimated_cost": 0
-            }
+        image = Image.open(image_path).convert("RGB")
 
         parts = self.detect_parts(image_path)
 
@@ -47,9 +45,6 @@ class AutoApprovePipeline:
         for part in parts:
 
             crop_img = self.crop(image, part["bbox"])
-
-            if crop_img.size == 0:
-                continue
 
             damage = predict_damage(crop_img)
 
