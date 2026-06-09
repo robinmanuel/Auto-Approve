@@ -1,5 +1,4 @@
-# Minimal packages for headless environment
-# Note: tesseract and X11 libraries excluded to avoid conflicts
+
 
 libgl1
 libgles2
