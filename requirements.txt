@@ -19,7 +19,7 @@ torchvision
 ultralytics
 
 # Image handling (IMPORTANT: headless only)
-
+opencv-python-headless
 pillow
 
 # OCR / PDF
