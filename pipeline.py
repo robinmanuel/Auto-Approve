@@ -1,4 +1,4 @@
-from PIL import Image
+import cv2
 from image_model import predict_damage
 from detector import CarPartDetector
 
@@ -8,93 +8,90 @@ class AutoApprovePipeline:
     def __init__(self, yolo_weights):
         self.detector = CarPartDetector(yolo_weights)
 
-    # -------------------------
-    # detect parts
-    # -------------------------
     def detect_parts(self, image_path):
         return self.detector.predict(image_path)
 
-    # -------------------------
-    # IoU for duplicate removal
-    # -------------------------
-    def iou(self, b1, b2):
-        x1 = max(b1[0], b2[0])
-        y1 = max(b1[1], b2[1])
-        x2 = min(b1[2], b2[2])
-        y2 = min(b1[3], b2[3])
-
-        inter = max(0, x2 - x1) * max(0, y2 - y1)
-
-        area1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
-        area2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
-
-        return inter / (area1 + area2 - inter + 1e-6)
-
-    # -------------------------
-    # crop image
-    # -------------------------
     def crop(self, image, bbox):
         x1, y1, x2, y2 = map(int, bbox)
-        return image.crop((x1, y1, x2, y2))
+        return image[y1:y2, x1:x2]
 
-    # -------------------------
-    # main pipeline
-    # -------------------------
+    # -----------------------------
+    # REMOVE DUPLICATES (IMPORTANT FIX)
+    # -----------------------------
+    def _deduplicate(self, parts, iou_threshold=0.85):
+
+        def iou(a, b):
+            xA = max(a[0], b[0])
+            yA = max(a[1], b[1])
+            xB = min(a[2], b[2])
+            yB = min(a[3], b[3])
+
+            inter = max(0, xB - xA) * max(0, yB - yA)
+
+            areaA = (a[2] - a[0]) * (a[3] - a[1])
+            areaB = (b[2] - b[0]) * (b[3] - b[1])
+
+            return inter / (areaA + areaB - inter + 1e-6)
+
+        filtered = []
+
+        for p in parts:
+            keep = True
+            for q in filtered:
+                if iou(p["bbox"], q["bbox"]) > iou_threshold:
+                    keep = False
+                    break
+            if keep:
+                filtered.append(p)
+
+        return filtered
+
     def analyze(self, image_path):
 
-        image = Image.open(image_path).convert("RGB")
+        image = cv2.imread(image_path)
 
-        raw_parts = self.detect_parts(image_path)
+        if image is None:
+            return {
+                "status": "error",
+                "message": "Invalid image"
+            }
 
-        if not raw_parts:
+        parts = self.detect_parts(image_path)
+
+        if not parts:
             return {
                 "status": "no_damage_detected",
                 "parts": [],
                 "total_estimated_cost": 0
             }
 
-        # -------------------------
-        # REMOVE DUPLICATES
-        # -------------------------
-        parts = []
-        for p in raw_parts:
-            duplicate = False
+        parts = self._deduplicate(parts)
 
-            for q in parts:
-                if self.iou(p["bbox"], q["bbox"]) > 0.7:
-                    duplicate = True
-                    break
-
-            if not duplicate:
-                parts.append(p)
-
-        # -------------------------
-        # DAMAGE ANALYSIS
-        # -------------------------
         results = []
         total_cost = 0
 
         for part in parts:
 
             crop_img = self.crop(image, part["bbox"])
+
+            if crop_img.size == 0:
+                continue
+
             damage = predict_damage(crop_img)
 
-            # fix wrong predictions (safety layer)
-            if part["class_name"] in ["hood", "door", "bumper"] and damage["Damage_Type"] == "broken_lamp":
-                damage["Damage_Type"] = "unknown"
-                damage["Estimated_Cost"] = 0
+            cost = float(damage.get("Estimated_Cost", 0))
 
-            total_cost += damage["Estimated_Cost"]
+            total_cost += cost
 
             results.append({
-                "part": part["class_name"],
-                "part_id": part["class_id"],
-                "part_confidence": part["confidence"],
-                "bbox": part["bbox"],
-                "damage_type": damage["Damage_Type"],
-                "damage_confidence": damage["Confidence"],
-                "severity": damage["Severity"],
-                "estimated_cost": damage["Estimated_Cost"]
+                "part": part.get("class_name", "unknown"),
+                "part_id": part.get("class_id", -1),
+                "part_confidence": round(part.get("confidence", 0), 3),
+                "bbox": part.get("bbox"),
+                "damage_type": damage.get("Damage_Type", "unknown"),
+                "damage_confidence": damage.get("Confidence", 0),
+                "severity": damage.get("Severity", "Unknown"),
+                "estimated_cost": cost
             })
 
         return {

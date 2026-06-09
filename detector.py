@@ -1,6 +1,5 @@
 from ultralytics import YOLO
 
-
 class CarPartDetector:
 
     def __init__(self, weights):
@@ -10,14 +9,14 @@ class CarPartDetector:
 
         results = self.model.predict(
             source=image_path,
-            conf=0.4,          # higher threshold to remove noise
+            conf=0.45,   # 🔥 increased threshold (fix duplicates)
+            iou=0.5,
             verbose=False
         )
 
         parts = []
 
         for r in results:
-
             if r.boxes is None:
                 continue
 
@@ -25,16 +24,17 @@ class CarPartDetector:
 
             for box in r.boxes:
 
+                cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
 
-                # filter weak detections
+                # 🔥 skip weak detections
                 if conf < 0.5:
                     continue
 
                 parts.append({
-                    "class_id": int(box.cls[0]),
-                    "class_name": names[int(box.cls[0])],
-                    "confidence": conf,
+                    "class_id": cls_id,
+                    "class_name": names.get(cls_id, str(cls_id)),
+                    "confidence": round(conf, 3),
                     "bbox": box.xyxy[0].tolist()
                 })
 
