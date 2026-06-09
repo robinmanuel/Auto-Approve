@@ -4,220 +4,119 @@ import pdfplumber
 import pytesseract
 from PIL import Image
 
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+
+# -------------------------
+# CLEAN TEXT
+# -------------------------
+def clean_text(text):
+    return text.upper().replace("\n", " ").replace("\t", " ")
 
 
 # -------------------------
-# TESSERACT CONFIG (Windows)
+# OCR EXTRACTION
 # -------------------------
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+def extract_text(file_path):
 
+    ext = os.path.splitext(file_path)[1].lower()
+    text = ""
 
-# -------------------------
-# BERT DOCUMENT CLASSIFIER
-# -------------------------
-class BERTDocumentClassifier:
+    if ext == ".pdf":
+        with pdfplumber.open(file_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+    else:
+        image = Image.open(file_path)
+        text = pytesseract.image_to_string(image)
 
-    def __init__(self):
-
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
-
-        self.labels = {
-            "RC": """
-                registration certificate rc book vehicle registration number
-                chassis number engine number transport department
-            """,
-            "DRIVING_LICENSE": """
-                driving licence driving license dl number transport authority
-                date of birth driving permit license number
-            """,
-            "POLICY": """
-                insurance policy policy number insured premium sum insured
-                coverage insurer policy period
-            """,
-            "INVOICE": """
-                invoice bill gst total amount repair estimate garage service charge
-                repair cost payment invoice number
-            """
-        }
-
-        self.label_embeddings = {
-            k: self.model.encode(v)
-            for k, v in self.labels.items()
-        }
-
-    def classify(self, text):
-
-        if not text or len(text.strip()) < 10:
-            return {"document_type": "UNKNOWN", "confidence": 0}
-
-        text_emb = self.model.encode(text)
-
-        scores = {}
-
-        for label, emb in self.label_embeddings.items():
-
-            score = cosine_similarity(
-                [text_emb],
-                [emb]
-            )[0][0]
-
-            scores[label] = float(score)
-
-        best = max(scores, key=scores.get)
-        confidence = scores[best] * 100
-
-        if confidence < 35:
-            return {
-                "document_type": "UNKNOWN",
-                "confidence": confidence,
-                "scores": scores
-            }
-
-        return {
-            "document_type": best,
-            "confidence": confidence,
-            "scores": scores
-        }
-
-
-classifier = BERTDocumentClassifier()
+    return clean_text(text)
 
 
 # -------------------------
-# OCR + VERIFIER
+# SIMPLE RULE-BASED CLASSIFIER (SAFE VERSION)
 # -------------------------
-class DocumentVerifier:
+def detect_document_type(text):
 
-    # CLEAN TEXT
-    def clean_text(self, text):
-        return (
-            text.upper()
-            .replace("\n", " ")
-            .replace("\t", " ")
-        )
+    if "POLICY" in text or "INSURANCE" in text:
+        return "POLICY"
 
-    # OCR EXTRACTION
-    def extract_text(self, file_path):
+    if "DL" in text or "DRIVING" in text:
+        return "DRIVING_LICENSE"
 
-        ext = os.path.splitext(file_path)[1].lower()
-        text = ""
+    if "RC" in text or "REGISTRATION" in text:
+        return "RC"
 
-        if ext == ".pdf":
+    if "INVOICE" in text or "BILL" in text:
+        return "INVOICE"
 
-            with pdfplumber.open(file_path) as pdf:
-                for page in pdf.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
+    return "UNKNOWN"
 
-        else:
 
-            image = Image.open(file_path)
-            text = pytesseract.image_to_string(image)
+# -------------------------
+# FIELD EXTRACTION
+# -------------------------
+def extract_vehicle_number(text):
+    pattern = r"[A-Z]{2}\s?\d{1,2}\s?[A-Z]{1,3}\s?\d{4}"
+    m = re.search(pattern, text)
+    return m.group().replace(" ", "") if m else None
 
-        return self.clean_text(text)
 
-    # DOCUMENT TYPE (BERT)
-    def detect_document_type(self, text):
-        return classifier.classify(text)["document_type"]
+def extract_policy_number(text):
+    pattern = r"POLICY\s*(NO|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]{6,})"
+    m = re.search(pattern, text)
+    return m.group(2) if m else None
 
-    # -------------------------
-    # FIELD EXTRACTION (ROBUST)
-    # -------------------------
-    def extract_vehicle_number(self, text):
 
-        patterns = [
-            r"[A-Z]{2}\s?\d{1,2}\s?[A-Z]{1,3}\s?\d{4}"
-        ]
+def extract_license_number(text):
+    pattern = r"[A-Z]{2}\d{13}"
+    m = re.search(pattern, text)
+    return m.group() if m else None
 
-        for p in patterns:
-            m = re.search(p, text)
-            if m:
-                return m.group().replace(" ", "")
 
+def extract_amount(text):
+    nums = re.findall(r"\d+(?:,\d+)*(?:\.\d+)?", text)
+    if not nums:
         return None
-
-    def extract_policy_number(self, text):
-
-        patterns = [
-            r"POLICY\s*(NO|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]{6,})"
-        ]
-
-        for p in patterns:
-            m = re.search(p, text)
-            if m:
-                return m.group(2)
-
-        return None
-
-    def extract_license_number(self, text):
-
-        patterns = [
-            r"[A-Z]{2}\d{13}",
-            r"[A-Z]{2}-\d{13}"
-        ]
-
-        for p in patterns:
-            m = re.search(p, text)
-            if m:
-                return m.group()
-
-        return None
-
-    def extract_amount(self, text):
-
-        nums = re.findall(r"\d+(?:,\d+)*(?:\.\d+)?", text)
-
-        if not nums:
-            return None
-
-        nums = [float(n.replace(",", "")) for n in nums]
-
-        return max(nums)
-
-    # FIELD MAPPER
-    def extract_fields(self, doc_type, text):
-
-        fields = {}
-
-        if doc_type == "RC":
-            fields["vehicle_number"] = self.extract_vehicle_number(text)
-
-        elif doc_type == "DRIVING_LICENSE":
-            fields["license_number"] = self.extract_license_number(text)
-
-        elif doc_type == "POLICY":
-            fields["policy_number"] = self.extract_policy_number(text)
-            fields["vehicle_number"] = self.extract_vehicle_number(text)
-
-        elif doc_type == "INVOICE":
-            fields["estimated_amount"] = self.extract_amount(text)
-
-        return fields
-
-    # MAIN FUNCTION
-    def verify_document(self, file_path):
-
-        text = self.extract_text(file_path)
-
-        doc_type = self.detect_document_type(text)
-
-        fields = self.extract_fields(doc_type, text)
-
-        return {
-            "document_type": doc_type,
-            "confidence": classifier.classify(text)["confidence"],
-            "fields": fields,
-            "ocr_text": text[:2000]
-        }
+    nums = [float(n.replace(",", "")) for n in nums]
+    return max(nums)
 
 
-verifier = DocumentVerifier()
+# -------------------------
+# FIELD MAPPER
+# -------------------------
+def extract_fields(doc_type, text):
+
+    fields = {}
+
+    if doc_type == "RC":
+        fields["vehicle_number"] = extract_vehicle_number(text)
+
+    elif doc_type == "DRIVING_LICENSE":
+        fields["license_number"] = extract_license_number(text)
+
+    elif doc_type == "POLICY":
+        fields["policy_number"] = extract_policy_number(text)
+        fields["vehicle_number"] = extract_vehicle_number(text)
+
+    elif doc_type == "INVOICE":
+        fields["estimated_amount"] = extract_amount(text)
+
+    return fields
 
 
+# -------------------------
+# MAIN FUNCTION (SAFE)
+# -------------------------
 def verify_document(file_path):
-    return verifier.verify_document(file_path)
+
+    text = extract_text(file_path)
+    doc_type = detect_document_type(text)
+    fields = extract_fields(doc_type, text)
+
+    return {
+        "document_type": doc_type,
+        "confidence": 100,
+        "fields": fields,
+        "ocr_text": text[:2000]
+    }
