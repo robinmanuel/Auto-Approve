@@ -3,17 +3,27 @@ import pandas as pd
 import joblib
 import plotly.graph_objects as go
 import uuid
+import os
+import tempfile
+from pathlib import Path
 
 from pipeline import AutoApprovePipeline
 from ocr import verify_document
 from consistency_checker import checker
 from approval_engine import ApprovalEngine
 
+# Get the directory where this script is located
+BASE_DIR = Path(__file__).resolve().parent
+
+# Create a temp directory for uploads
+TEMP_DIR = Path(tempfile.gettempdir()) / "streamlit_auto_approve"
+TEMP_DIR.mkdir(exist_ok=True)
+
 # -----------------------------
 # LOAD MODELS
 # -----------------------------
-model = joblib.load("model.pkl")
-pipeline = AutoApprovePipeline("parts_segmentation.pt")
+model = joblib.load(BASE_DIR / "model.pkl")
+pipeline = AutoApprovePipeline(str(BASE_DIR / "parts_segmentation.pt"))
 engine = ApprovalEngine()
 
 # -----------------------------
@@ -108,12 +118,12 @@ with col2:
         if uploaded_image is None:
             st.warning("Upload image first")
         else:
-            image_path = f"temp_{uuid.uuid4().hex}.jpg"
+            image_path = TEMP_DIR / f"temp_{uuid.uuid4().hex}.jpg"
 
             with open(image_path, "wb") as f:
                 f.write(uploaded_image.getbuffer())
 
-            result = pipeline.analyze(image_path)
+            result = pipeline.analyze(str(image_path))
             st.session_state.pipeline_result = result
 
             st.success("Damage Analysis Complete")
@@ -144,12 +154,12 @@ with col3:
             st.session_state.documents = {}
 
             for file in document_files:
-                temp_path = f"temp_{uuid.uuid4().hex}_{file.name}"
+                temp_path = TEMP_DIR / f"temp_{uuid.uuid4().hex}_{file.name}"
 
                 with open(temp_path, "wb") as f:
                     f.write(file.getbuffer())
 
-                doc_result = verify_document(temp_path)
+                doc_result = verify_document(str(temp_path))
 
                 doc_type = doc_result["document_type"]
                 doc_type = doc_type.strip().upper().replace(" ", "_")

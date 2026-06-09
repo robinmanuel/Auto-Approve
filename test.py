@@ -1,8 +1,11 @@
 from pipeline import AutoApprovePipeline
 import json
+from pathlib import Path
 
-IMAGE_PATH = "temp_71c79fe60d094235bdb899ddb5ea97f6.jpg"  # change if needed
-YOLO_WEIGHTS = "parts_segmentation.pt"
+BASE_DIR = Path(__file__).resolve().parent
+
+IMAGE_PATH = str(BASE_DIR / "temp_71c79fe60d094235bdb899ddb5ea97f6.jpg")  # change if needed
+YOLO_WEIGHTS = str(BASE_DIR / "parts_segmentation.pt")
 
 pipeline = AutoApprovePipeline(YOLO_WEIGHTS)
 

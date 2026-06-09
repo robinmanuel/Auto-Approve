@@ -1,5 +1,6 @@
 import os
 import re
+import platform
 import pdfplumber
 import pytesseract
 from PIL import Image
@@ -9,11 +10,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 # -------------------------
-# TESSERACT CONFIG (Windows)
+# TESSERACT CONFIG (Platform-aware)
 # -------------------------
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = (
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    )
+# On Linux/Streamlit Cloud, tesseract is in PATH by default
 
 
 # -------------------------

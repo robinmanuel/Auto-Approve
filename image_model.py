@@ -1,9 +1,13 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from pathlib import Path
 
 from torchvision import models, transforms
 from PIL import Image
+
+# Get the directory where this script is located
+BASE_DIR = Path(__file__).resolve().parent
 
 
 CLASSES = [
@@ -64,7 +68,7 @@ class DamageNet(nn.Module):
 model = DamageNet(len(CLASSES)).to(device)
 
 checkpoint = torch.load(
-    "best_damagenet_model.pth",
+    BASE_DIR / "best_damagenet_model.pth",
     map_location=device,
     weights_only=False
 )
