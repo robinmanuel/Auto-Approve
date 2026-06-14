@@ -9,7 +9,7 @@ matplotlib
 
 # ML / classical ML
 scikit-learn
-xgboost
+# xgboost - removed, now using rule-based risk engine
 
 # PyTorch stack (pinned for stability)
 torch

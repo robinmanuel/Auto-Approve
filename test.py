@@ -1,25 +1,36 @@
-from pipeline import AutoApprovePipeline
-import json
-from pathlib import Path
+from ocr import verify_document
 
-BASE_DIR = Path(__file__).resolve().parent
+files = [
+    "samples/rc.jpg",
+    "samples/dl.jpg",
+    "samples/policy.pdf",
+    "samples/aadhaar.jpg"
+]
 
-IMAGE_PATH = str(BASE_DIR / "temp_71c79fe60d094235bdb899ddb5ea97f6.jpg")  # change if needed
-YOLO_WEIGHTS = str(BASE_DIR / "parts_segmentation.pt")
+for file in files:
 
-pipeline = AutoApprovePipeline(YOLO_WEIGHTS)
+    print("\n" + "=" * 80)
+    print(file)
+    print("=" * 80)
 
-result = pipeline.analyze(IMAGE_PATH)
+    result = verify_document(file)
 
-print("\n================ PIPELINE OUTPUT ================\n")
+    print(
+        "TYPE:",
+        result["document_type"]
+    )
 
-print("TOTAL COST:", result["total_estimated_cost"])
-print("STATUS:", result["status"])
-print("PARTS FOUND:", len(result["parts"]))
+    print(
+        "DECISION:",
+        result["decision"]["decision"]
+    )
 
-print("\n---------------- PART DETAILS ----------------\n")
+    print(
+        "FRAUD:",
+        result["fraud"]["fraud_score"]
+    )
 
-for p in result["parts"]:
-    print(json.dumps(p, indent=2))
-
-print("\n================ END =================\n")
+    print(
+        "FIELDS:",
+        result["fields"]
+    )
